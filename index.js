@@ -1,3 +1,62 @@
-// run `node index.js` in the terminal
+const express = require('express');
+const cors = require('cors');
+const app = express();
 
-console.log(`Hello Node.js v${process.versions.node}!`);
+// Ensure no local-only configurations remain by using dynamic ports
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// In-memory database for expenses
+let expenses = [
+    { id: 1, amount: 150, category: "Food", date: "2026-04-20" }
+];
+
+// 1. GET: Retrieves a list of all logged expenses
+app.get('/api/expenses', (req, res) => {
+    res.json(expenses);
+});
+
+// 2. POST: Logs a new expense transaction
+app.post('/api/expenses', (req, res) => {
+    const { amount, category, date } = req.body;
+    
+    if (!amount || !category || !date) {
+        return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const newExpense = {
+        id: Date.now(),
+        amount,
+        category,
+        date
+    };
+    
+    expenses.push(newExpense);
+    res.status(201).json(newExpense);
+});
+
+// 3. PUT: Corrects a mistake in a previously logged expense
+app.put('/api/expenses/:id', (req, res) => {
+    const { id } = req.params;
+    const index = expenses.findIndex(e => e.id == id);
+    
+    if (index !== -1) {
+        expenses[index] = { ...expenses[index], ...req.body };
+        res.json(expenses[index]);
+    } else {
+        res.status(404).json({ error: "Expense not found" });
+    }
+});
+
+// 4. DELETE: Deletes an accidental or duplicate expense entry
+app.delete('/api/expenses/:id', (req, res) => {
+    const { id } = req.params;
+    expenses = expenses.filter(e => e.id != id);
+    res.status(204).send();
+});
+
+app.listen(PORT, () => {
+    console.log(`Expense API running on port ${PORT}`);
+});
